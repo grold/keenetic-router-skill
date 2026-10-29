@@ -217,6 +217,33 @@ backups/
 
 ---
 
+## Example Prompts for AI Agents
+
+Once the skill is installed, you can interact with your router using natural language. Here are real-world prompt examples:
+
+### System Status & Health
+- *"Check the current health, CPU load, and uptime on my router."*
+- *"Are all my secondary routers (cottage and office) reachable? Show a status summary table."*
+- *"Check what version of KeeneticOS is running and if any updates are available."*
+
+### Wi-Fi Diagnostics & Client Tracking
+- *"List all connected Wi-Fi clients along with their band (2.4/5GHz), RSSI signal in dBm, and connection speed."*
+- *"Are there any unknown or unregistered devices on my network right now?"*
+- *"Which device on the network has the IP 192.168.1.45?"*
+
+### Network Interfaces & VPN Management
+- *"Show all active network interfaces and their link state (up/down)."*
+- *"Check the handshake status and transferred bytes for WireGuard tunnel peers."*
+- *"Add a new WireGuard client called 'phone' with IP 10.0.0.5 on interface Wireguard3."*
+- *"Configure policy routing to direct traffic for domain.com through the WireGuard tunnel."*
+
+### Troubleshooting, Logs & Backups
+- *"Backup all configured routers right now."*
+- *"Show the last 50 syslog messages and see if there are any connection drops or DNS errors."*
+- *"Safely reboot the router after creating a fresh backup."*
+
+---
+
 ## Safety Rule for AI Agents
 
 When using this skill with AI coding agents (Antigravity / Gemini), the workspace includes a mandatory rule in [`AGENTS.md`](./AGENTS.md):

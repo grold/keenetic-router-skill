@@ -160,6 +160,32 @@ python3 keenetic.py reboot --yes
 
 --------------------------------------------------------------------------------
 
+## Example User Prompts
+
+Common prompt patterns that trigger this skill:
+
+- **Status & Health**:
+  - *"Check router status and CPU load."*
+  - *"Is my router firmware up to date?"*
+  - *"Check uptime and memory utilization on the cottage router."*
+
+- **Connected Devices & Wi-Fi**:
+  - *"Show all connected devices and their IP/MAC addresses."*
+  - *"Check Wi-Fi clients and signal strength (RSSI)."*
+  - *"Show active DHCP leases."*
+
+- **Interfaces & Routing**:
+  - *"List all network interfaces and check which ones are UP."*
+  - *"Show active IP routes on the router."*
+  - *"Inspect WireGuard peer status and last handshake time."*
+
+- **Troubleshooting & Maintenance**:
+  - *"Show the last 50 router log messages."*
+  - *"Run a backup of all my routers."*
+  - *"Reboot the router."*
+
+--------------------------------------------------------------------------------
+
 ## References
 
 - [Keenetic RCI REST API Manual](./references/rci_api.md)
