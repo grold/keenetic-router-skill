@@ -1,24 +1,44 @@
-# Keenetic Router Management CLI & Antigravity Agent Skill
+# Keenetic Router Management CLI & Universal AI Agent Skill
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python: 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![KeeneticOS: 3.x / 4.x / 5.x](https://img.shields.io/badge/KeeneticOS-3.x%20--%205.x-teal.svg)](https://keenetic.com)
+[![Skills.sh](https://img.shields.io/badge/skills.sh-grold%2Fkeenetic--router--skill-black)](https://skills.sh)
 
-A powerful CLI tool, Python client library, and AI Agent skill for managing Keenetic routers locally (e.g. `http://192.168.1.1`) or remotely over KeenDNS / Cloud relay (`https://<name>.keenetic.pro` / `https://<name>.keenetic.link`).
+A powerful CLI tool, Python client library, and **Universal AI Agent Skill** for managing Keenetic routers locally (e.g. `http://192.168.1.1`) or remotely over KeenDNS / Cloud relay (`https://<name>.keenetic.pro` / `https://<name>.keenetic.link`).
+
+Compatible with **Claude Code**, **Cursor**, **Antigravity**, **Windsurf**, **Codex / ChatGPT**, and any agent adhering to the open [skills.sh](https://skills.sh) specification.
 
 Supports **KeeneticOS 5.x NDW4** (SCRAM-style Argon2id + HMAC-SHA3-512) and **NDW2** authentication with automatic session cookie caching and brute-force lockout protection.
 
 ---
 
+## ⚡ Quick Install (Any AI Agent)
+
+Install directly into your current project for all detected coding agents using the [skills.sh](https://skills.sh) CLI:
+
+```bash
+npx skills add grold/keenetic-router-skill
+```
+
+Or install globally across all projects on your system:
+
+```bash
+npx skills add grold/keenetic-router-skill -g
+```
+
+---
+
 ## Features
 
+- **Universal AI Agent Skill**: Open `SKILL.md` specification with prompt triggers, workflows, and runbooks compatible with Claude Code, Cursor, Windsurf, Antigravity, and other assistants.
 - **System Health**: Check hardware model, KeeneticOS firmware release, CPU and memory load, and system uptime.
 - **Device & Hotspot Tracking**: List active network clients, MAC addresses, assigned IP leases, and link types.
 - **Wireless Diagnostics**: Real-time Wi-Fi client association list, band (2.4 GHz / 5 GHz), RSSI signal strength (dBm), and Tx/Rx negotiation speeds.
 - **Interface & Route Inspection**: Monitor physical ports (ISP, Home LAN) and virtual tunnels (WireGuard, OpenVPN, SSTP) alongside the active IP routing table.
 - **RCI REST Explorer**: Directly execute arbitrary queries against the KeeneticOS RCI REST API (`show/components`, `show/acme`, `show/mws/member`, etc.).
 - **Automated Backup & Archive**: Download running and startup configs, preserving older versions in timestamped archives (`archive/<timestamp>/`).
-- **Antigravity AI Skill**: Fully documented runbook and tool specifications for autonomous AI coding agents (Antigravity).
+- **Safe Reboot**: Reboot routers remotely with safety confirmation.
 
 ---
 
@@ -38,51 +58,49 @@ pip install requests cryptography
 
 ---
 
-### Method 1: Standalone CLI Tool
+### Agent-Specific Installation
+
+#### 1. Claude Code
+```bash
+npx skills add grold/keenetic-router-skill --agent claude-code
+```
+*(Or add `-g` for global installation)*
+
+#### 2. Cursor
+```bash
+npx skills add grold/keenetic-router-skill --agent cursor
+```
+
+#### 3. Antigravity / Gemini CLI
+```bash
+npx skills add grold/keenetic-router-skill --agent antigravity
+```
+*(Or copy `.agents/skills/keenetic/` directly into your workspace or `~/.gemini/config/skills/`)*
+
+#### 4. Windsurf / Codex / Other Assistants
+```bash
+npx skills add grold/keenetic-router-skill -a '*'
+```
+*(Installs to all agents detected in the project environment)*
+
+---
+
+### Standalone CLI Tool (Without an AI Agent)
 
 Clone the repository to any directory:
 
 ```bash
-git clone https://github.com/your-username/keenetic-skill.git
-cd keenetic-skill
-```
-
-Optional: make the CLI tool executable globally by symlinking it:
-
-```bash
+git clone https://github.com/grold/keenetic-router-skill.git
+cd keenetic-router-skill
 chmod +x keenetic.py
 sudo ln -s "$(pwd)/keenetic.py" /usr/local/bin/keenetic
 ```
 
 ---
 
-### Method 2: As an Antigravity AI Agent Skill
-
-You can add this skill to your Antigravity agent in two ways:
-
-#### A. Project-Specific Skill (Recommended for teams)
-Copy the skill into your project's workspace:
-
-```bash
-mkdir -p .agents/skills/
-cp -r /path/to/keenetic-skill/.agents/skills/keenetic .agents/skills/
-```
-
-#### B. Global User Skill (Available across all workspaces)
-Install the skill into your global Antigravity configuration directory:
-
-```bash
-mkdir -p ~/.gemini/config/skills/
-cp -r /path/to/keenetic-skill/.agents/skills/keenetic ~/.gemini/config/skills/
-```
-
-Once installed, your agent will automatically discover the skill and be able to inspect and configure your routers.
-
----
-
 ## Configuration
 
-Credentials and targets are stored in `~/.config/keenetic/config.json`. This keeps your credentials separate from code and prevents accidental commits.
+Credentials and router targets are stored in `~/.config/keenetic/config.json`. This keeps your credentials separate from code and prevents accidental git commits.
 
 1. **Create the configuration directory and template**:
 
@@ -130,7 +148,7 @@ Credentials and targets are stored in `~/.config/keenetic/config.json`. This kee
 
 ---
 
-## How to Use
+## How to Use (CLI)
 
 ### 1. View System Status
 Displays model, KeeneticOS version, CPU utilization, and RAM:
@@ -219,7 +237,7 @@ backups/
 
 ## Example Prompts for AI Agents
 
-Once the skill is installed, you can interact with your router using natural language. Here are real-world prompt examples:
+Once installed, you can talk to your coding assistant (Claude Code, Cursor, Antigravity, etc.) in natural language:
 
 ### System Status & Health
 - *"Check the current health, CPU load, and uptime on my router."*
@@ -246,7 +264,7 @@ Once the skill is installed, you can interact with your router using natural lan
 
 ## Safety Rule for AI Agents
 
-When using this skill with AI coding agents (Antigravity / Gemini), the workspace includes a mandatory rule in [`AGENTS.md`](./AGENTS.md):
+When using this skill with any AI coding agent, the workspace includes a mandatory safety rule in [`AGENTS.md`](./AGENTS.md):
 
 > **Mandatory Pre-Change Backup**:
 > Whenever an agent is instructed to make or test any configuration changes on any Keenetic router (via RCI, CLI, or API), it **must** run `python3 keenetic.py --host <target_router> backup` and verify that the backup succeeded before modifying any setting.
