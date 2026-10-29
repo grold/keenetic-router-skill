@@ -1,0 +1,23 @@
+{
+  "host": "http://192.168.1.1",
+  "login": "admin",
+  "password": "your_password",
+  "timeout": 15,
+  "hosts": {
+    "home": {
+      "host": "http://192.168.1.1",
+      "login": "admin",
+      "password": "your_password"
+    },
+    "cottage": {
+      "host": "https://cottage.keenetic.pro",
+      "login": "admin",
+      "password": "your_password"
+    },
+    "office": {
+      "host": "https://office.keenetic.link",
+      "login": "admin",
+      "password": "your_password"
+    }
+  }
+}

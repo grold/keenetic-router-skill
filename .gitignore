@@ -1,0 +1,29 @@
+# Keenetic router backups containing secrets, private keys, passwords
+backups/
+*.txt
+*.log
+
+# Sensitive configs (keep example only)
+config.json
+*.json
+!config.example.json
+
+# Session caches & local credentials
+session_*.json
+.cache/
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env
+
+# OS / Editor files
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
