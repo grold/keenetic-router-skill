@@ -11,8 +11,7 @@
     },
     "cottage": {
       "host": "https://cottage.keenetic.pro",
-      "login": "admin",
-      "password": "your_password"
+      "token": "your_personal_access_token_or_password"
     },
     "office": {
       "host": "https://office.keenetic.link",

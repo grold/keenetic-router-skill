@@ -126,8 +126,7 @@ Credentials and router targets are stored in `~/.config/keenetic/config.json`. T
        },
        "cottage": {
          "host": "https://cottage.keenetic.pro",
-         "login": "admin",
-         "password": "your_remote_password"
+         "token": "your_personal_access_token"
        },
        "office": {
          "host": "https://office.keenetic.link",
@@ -138,12 +137,16 @@ Credentials and router targets are stored in `~/.config/keenetic/config.json`. T
    }
    ```
 
+   *(Note: You can use `token` (Personal Access Token from Keenetic's `/administrator/tokens`) instead of `login` and `password` for passwordless, revocable API access).*
+
 3. **Environment Variables (Optional)**:
    You can also override credentials via environment variables:
    ```bash
    export KEENETIC_HOST="https://cottage.keenetic.pro"
-   export KEENETIC_LOGIN="admin"
-   export KEENETIC_PASSWORD="your_password"
+   export KEENETIC_TOKEN="your_personal_access_token"
+   # Or traditional login/password:
+   # export KEENETIC_LOGIN="admin"
+   # export KEENETIC_PASSWORD="your_password"
    ```
 
 ---

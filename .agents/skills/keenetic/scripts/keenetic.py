@@ -83,15 +83,19 @@ def load_config(target_host=None):
             pass
 
     # Match target host against configured hosts dictionary
-    host_to_match = target_host or config["host"]
+    if isinstance(target_host, dict):
+        host_to_match = target_host.get("host", "")
+    else:
+        host_to_match = target_host or config.get("host", "")
     clean_host = host_to_match.replace("https://", "").replace("http://", "").strip("/")
     
     if clean_host in config.get("hosts", {}):
         profile = config["hosts"][clean_host]
         config["host"] = profile.get("host", config["host"])
-        config["login"] = profile.get("login", config["login"])
-        config["password"] = profile.get("password", config["password"])
-    elif target_host:
+        config["login"] = profile.get("login", config.get("login"))
+        config["password"] = profile.get("password", config.get("password"))
+        config["token"] = profile.get("token", config.get("token"))
+    elif target_host and isinstance(target_host, str):
         config["host"] = target_host
 
     # Environment variables override
@@ -101,6 +105,8 @@ def load_config(target_host=None):
         config["login"] = os.environ["KEENETIC_LOGIN"]
     if "KEENETIC_PASSWORD" in os.environ:
         config["password"] = os.environ["KEENETIC_PASSWORD"]
+    if "KEENETIC_TOKEN" in os.environ:
+        config["token"] = os.environ["KEENETIC_TOKEN"]
 
     # Ensure protocol
     if not config["host"].startswith("http://") and not config["host"].startswith("https://"):
@@ -110,13 +116,20 @@ def load_config(target_host=None):
 
 
 class KeeneticClient:
-    def __init__(self, host=None, login=None, password=None, timeout=15):
-        cfg = load_config(target_host=host)
-        self.host = host or cfg.get("host", DEFAULT_HOST)
+    def __init__(self, host=None, login=None, password=None, token=None, timeout=15):
+        if isinstance(host, dict):
+            cfg = host
+            target_host = cfg.get("host")
+        else:
+            target_host = host
+            cfg = load_config(target_host=target_host)
+
+        self.host = target_host or cfg.get("host", DEFAULT_HOST)
         if not self.host.startswith("http://") and not self.host.startswith("https://"):
             self.host = f"https://{self.host}"
         self.host = self.host.rstrip("/")
 
+        self.token = token or cfg.get("token")
         self.login = login or cfg.get("login", DEFAULT_LOGIN)
         self.password = password or cfg.get("password", DEFAULT_PASSWORD)
         self.timeout = timeout or cfg.get("timeout", 15)
@@ -133,7 +146,13 @@ class KeeneticClient:
         try:
             with open(sess_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            if data.get("host") == self.host and data.get("login") == self.login:
+
+            host_matches = data.get("host") == self.host
+            auth_matches = (
+                (self.token and data.get("token") == self.token) or
+                (not self.token and data.get("login") == self.login)
+            )
+            if host_matches and auth_matches:
                 # Max session age 6 hours
                 if time.time() - data.get("timestamp", 0) > 21600:
                     return False
@@ -158,6 +177,7 @@ class KeeneticClient:
                 json.dump({
                     "host": self.host,
                     "login": self.login,
+                    "token": self.token,
                     "cookies": cookies,
                     "timestamp": time.time()
                 }, f)
@@ -165,19 +185,40 @@ class KeeneticClient:
         except Exception:
             pass
 
+    def _authenticate_token(self):
+        try:
+            # 1. Primary: GET /auth?x-ndma-tkn=<token>
+            r = self.session.get(f"{self.host}/auth", params={"x-ndma-tkn": self.token}, timeout=self.timeout, verify=False)
+            if r.status_code == 200:
+                return True
+            # 2. Fallback: Set cookie directly and test with a lightweight call
+            self.session.cookies.set("__Host-Http-X-NDMA-TKN", self.token)
+            test_res = self.session.get(f"{self.host}/rci/show/system", timeout=self.timeout, verify=False)
+            return test_res.status_code == 200
+        except Exception:
+            return False
+
     def authenticate(self):
         # 1. Try cached session first
         if self._load_cached_session():
             return True
 
+        # 2. Try token authentication if token is provided
+        if self.token:
+            if self._authenticate_token():
+                self._save_cached_session()
+                return True
+            # If token auth failed and no login/password available, fail
+            if not self.login or not self.password:
+                raise PermissionError(f"Token authentication failed for {self.host}")
+
         if not self.login or not self.password:
             raise ValueError(
-                "Router credentials missing. Provide --login and --password, set "
-                "KEENETIC_LOGIN and KEENETIC_PASSWORD environment variables, or "
-                f"configure {CONFIG_FILE}."
+                "Router credentials missing. Provide --token, or provide --login and --password, "
+                "or configure environment variables / config file."
             )
 
-        # 2. Initial GET /auth to retrieve challenge & session cookie
+        # 3. Initial GET /auth to retrieve challenge & session cookie
         r0 = self.session.get(f"{self.host}/auth", timeout=self.timeout, verify=False)
         if r0.status_code == 200:
             self._save_cached_session()
@@ -186,13 +227,13 @@ class KeeneticClient:
         www_auth = r0.headers.get("www-authenticate", "") or r0.headers.get("WWW-Authenticate", "")
         supports_ndw4 = "x-ndw4" in www_auth
 
-        # 3. NDW4 Authentication (Argon2id + HMAC-SHA3-512)
+        # 4. NDW4 Authentication (Argon2id + HMAC-SHA3-512)
         if supports_ndw4 and Argon2id is not None:
             if self._authenticate_ndw4(r0):
                 self._save_cached_session()
                 return True
 
-        # 4. Fallback to NDW2 Authentication (MD5 + SHA-256)
+        # 5. Fallback to NDW2 Authentication (MD5 + SHA-256)
         if self._authenticate_ndw2(r0):
             self._save_cached_session()
             return True
@@ -570,6 +611,7 @@ def main():
     parser.add_argument("--host", help=f"Router host URL (default: {DEFAULT_HOST})")
     parser.add_argument("--login", "-u", help="Login username (or set via KEENETIC_LOGIN or config file)")
     parser.add_argument("--password", "-p", help="Login password (or set via KEENETIC_PASSWORD or config file)")
+    parser.add_argument("--token", "-t", help="Personal access token for passwordless authentication (or set via KEENETIC_TOKEN or config file)")
     parser.add_argument("--json", action="store_true", help="Output raw JSON response")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
@@ -606,7 +648,7 @@ def main():
         parser.print_help()
         sys.exit(0)
 
-    client = KeeneticClient(host=args.host, login=args.login, password=args.password)
+    client = KeeneticClient(host=args.host, login=args.login, password=args.password, token=args.token)
 
     cmd = args.command
     if cmd in ("status", "system"):

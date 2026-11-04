@@ -6,7 +6,8 @@ The Keenetic Router Control Interface (RCI) is a RESTful API provided by Keeneti
 
 - Cloud URL: `https://<domain>.keenetic.pro/rci/`
 - Local URL: `http://192.168.1.1/rci/` or `https://192.168.1.1/rci/`
-- Authentication Endpoint: `/auth`
+- Authentication Methods:
+  - **Personal Access Tokens (PAT)**: Direct passwordless authentication via `GET /auth?x-ndma-tkn=<token>` or cookie `__Host-Http-X-NDMA-TKN=<token>`. Tokens can be generated in the Web UI under `/administrator/tokens`.
   - **NDW4 (KeeneticOS 5.2+)**: SCRAM-like 3-phase Argon2id + HMAC-SHA3-512 authentication.
   - **NDW2 (Legacy)**: Challenge-response MD5 + SHA-256.
 
