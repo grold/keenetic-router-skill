@@ -37,6 +37,20 @@ try:
 except ImportError:
     Argon2id = None
 
+import socket
+
+HOST_IP_OVERRIDES = {}
+_orig_getaddrinfo = socket.getaddrinfo
+
+
+def _custom_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    if host in HOST_IP_OVERRIDES:
+        return _orig_getaddrinfo(HOST_IP_OVERRIDES[host], port, family, type, proto, flags)
+    return _orig_getaddrinfo(host, port, family, type, proto, flags)
+
+
+socket.getaddrinfo = _custom_getaddrinfo
+
 CONFIG_DIR = Path.home() / ".config" / "keenetic"
 CACHE_DIR = Path.home() / ".cache" / "keenetic"
 CONFIG_FILE = CONFIG_DIR / "config.json"
@@ -82,6 +96,11 @@ def load_config(target_host=None):
         except Exception:
             pass
 
+    for h_name, h_prof in config.get("hosts", {}).items():
+        if isinstance(h_prof, dict) and h_prof.get("ip"):
+            clean_h = h_name.replace("https://", "").replace("http://", "").strip("/")
+            HOST_IP_OVERRIDES[clean_h] = h_prof["ip"]
+
     # Match target host against configured hosts dictionary
     if isinstance(target_host, dict):
         host_to_match = target_host.get("host", "")
@@ -95,6 +114,8 @@ def load_config(target_host=None):
         config["login"] = profile.get("login", config.get("login"))
         config["password"] = profile.get("password", config.get("password"))
         config["token"] = profile.get("token", config.get("token"))
+        if profile.get("ip"):
+            HOST_IP_OVERRIDES[clean_host] = profile["ip"]
     elif target_host and isinstance(target_host, str):
         config["host"] = target_host
 
