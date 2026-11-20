@@ -465,7 +465,17 @@ class KeeneticClient:
         archive_dir.mkdir(parents=True, exist_ok=True)
 
         copied = 0
-        for fname in ["startup-config.txt", "running-config.txt", "backup-config.txt", "default-config.txt", "info.json"]:
+        for fname in [
+            "startup-config.txt",
+            "running-config.txt",
+            "backup-config.txt",
+            "default-config.txt",
+            "info.json",
+            "changes-summary.md",
+            "chat-history.md",
+            "chat-history.jsonl",
+            "transcript.jsonl",
+        ]:
             src = dest / fname
             if src.exists() and src.is_file():
                 dst = archive_dir / fname
@@ -474,6 +484,60 @@ class KeeneticClient:
                     copied += 1
 
         return ts_str if copied > 0 else ts_str
+
+    def log_change(self, dest_dir, why, what, chat=None, verification=None):
+        """Records a configuration change summary (WHAT and WHY) and chat history alongside backups."""
+        dest = Path(dest_dir)
+        dest.mkdir(parents=True, exist_ok=True)
+        now_str = time.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+        summary_file = dest / "changes-summary.md"
+        entry = (
+            f"## Change Entry - {now_str}\n\n"
+            f"- **Target Host:** {self.host}\n"
+            f"- **Timestamp:** {now_str}\n\n"
+            f"### Why Changes Were Made\n"
+            f"{why.strip()}\n\n"
+            f"### What Changes Were Made\n"
+            f"{what.strip()}\n\n"
+        )
+        if verification:
+            entry += f"### Verification & Results\n{verification.strip()}\n\n"
+        entry += "---\n\n"
+
+        if summary_file.exists():
+            existing = summary_file.read_text(encoding="utf-8")
+            if existing.startswith("# Router Configuration Change History"):
+                new_content = existing.replace(
+                    "# Router Configuration Change History\n\n",
+                    f"# Router Configuration Change History\n\n{entry}",
+                    1
+                )
+            else:
+                new_content = f"# Router Configuration Change History\n\n{entry}{existing}"
+        else:
+            new_content = f"# Router Configuration Change History\n\n{entry}"
+        summary_file.write_text(new_content, encoding="utf-8")
+
+        chat_saved = None
+        if chat:
+            chat_p = Path(chat)
+            if chat_p.exists() and chat_p.is_file():
+                if chat_p.name.endswith(".jsonl"):
+                    dst_chat = dest / "transcript.jsonl"
+                else:
+                    dst_chat = dest / "chat-history.md"
+                shutil.copy2(chat_p, dst_chat)
+                chat_saved = dst_chat.name
+            else:
+                dst_chat = dest / "chat-history.md"
+                dst_chat.write_text(chat, encoding="utf-8")
+                chat_saved = dst_chat.name
+
+        return {
+            "summary_file": str(summary_file),
+            "chat_file": chat_saved,
+        }
 
     def backup(self, dest_dir, archive_older=True):
         dest = Path(dest_dir)
@@ -586,6 +650,10 @@ def list_backups(base_dir="backups"):
         backup_cfg = rdir / "backup-config.txt"
         default_cfg = rdir / "default-config.txt"
         info = rdir / "info.json"
+        changes = rdir / "changes-summary.md"
+        chat_md = rdir / "chat-history.md"
+        chat_jsonl = rdir / "chat-history.jsonl"
+        transcript = rdir / "transcript.jsonl"
         archive_dir = rdir / "archive"
 
         btime = "Unknown"
@@ -612,6 +680,14 @@ def list_backups(base_dir="backups"):
             print(f"    - backup-config.txt:  {backup_cfg.stat().st_size:,} bytes")
         if default_cfg.exists():
             print(f"    - default-config.txt: {default_cfg.stat().st_size:,} bytes")
+        if changes.exists():
+            print(f"    - changes-summary.md: {changes.stat().st_size:,} bytes")
+        if chat_md.exists():
+            print(f"    - chat-history.md:    {chat_md.stat().st_size:,} bytes")
+        if chat_jsonl.exists():
+            print(f"    - chat-history.jsonl: {chat_jsonl.stat().st_size:,} bytes")
+        if transcript.exists():
+            print(f"    - transcript.jsonl:   {transcript.stat().st_size:,} bytes")
 
         if archive_dir.exists():
             archives = sorted([d for d in archive_dir.iterdir() if d.is_dir()])
@@ -663,6 +739,13 @@ def main():
 
     backups_parser = subparsers.add_parser("backups", help="List actual and older saved backups")
     backups_parser.add_argument("--dir", default="backups", help="Destination folder (default: backups)")
+
+    log_change_parser = subparsers.add_parser("log-change", help="Record configuration change summary (WHAT/WHY) and chat history")
+    log_change_parser.add_argument("--what", required=True, help="Description of WHAT changes were made")
+    log_change_parser.add_argument("--why", required=True, help="Description of WHY changes were made")
+    log_change_parser.add_argument("--chat", help="Path to chat transcript/log file or chat content string")
+    log_change_parser.add_argument("--verification", help="Verification steps or validation results")
+    log_change_parser.add_argument("--dir", default="backups", help="Backups destination folder (default: backups)")
 
     args = parser.parse_args()
     if not args.command:
@@ -882,6 +965,27 @@ def main():
             except Exception as e:
                 print(f"Error backing up router: {e}", file=sys.stderr)
                 sys.exit(1)
+
+    elif cmd == "log-change":
+        base_dir = Path(getattr(args, "dir", "backups"))
+        clean_name = client.host.replace("https://", "").replace("http://", "").strip("/")
+        target_dir = base_dir / clean_name
+        print(f"Recording change log for {clean_name} -> {target_dir}...")
+        try:
+            res = client.log_change(
+                dest_dir=target_dir,
+                why=args.why,
+                what=args.what,
+                chat=args.chat,
+                verification=args.verification,
+            )
+            print(f"  [+] changes-summary.md saved")
+            if res.get("chat_file"):
+                print(f"  [+] {res['chat_file']} saved")
+            print(f"Change documentation successfully saved in '{target_dir}'.")
+        except Exception as e:
+            print(f"Error recording change log: {e}", file=sys.stderr)
+            sys.exit(1)
 
 
 if __name__ == "__main__":

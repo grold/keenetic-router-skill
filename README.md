@@ -37,7 +37,7 @@ npx skills add grold/keenetic-router-skill -g
 - **Wireless Diagnostics**: Real-time Wi-Fi client association list, band (2.4 GHz / 5 GHz), RSSI signal strength (dBm), and Tx/Rx negotiation speeds.
 - **Interface & Route Inspection**: Monitor physical ports (ISP, Home LAN) and virtual tunnels (WireGuard, OpenVPN, SSTP) alongside the active IP routing table.
 - **RCI REST Explorer**: Directly execute arbitrary queries against the KeeneticOS RCI REST API (`show/components`, `show/acme`, `show/mws/member`, etc.).
-- **Automated Backup & Archive**: Download running and startup configs, preserving older versions in timestamped archives (`archive/<timestamp>/`).
+- **Automated Backup & Audit Trail**: Download running and startup configs, preserving older versions in timestamped archives (`archive/<timestamp>/`), while saving change summaries (WHAT/WHY) and chat history alongside backups.
 - **Safe Reboot**: Reboot routers remotely with safety confirmation.
 
 ---
@@ -231,9 +231,27 @@ backups/
 │   ├── running-config.txt        # Latest running configuration
 │   ├── default-config.txt        # Factory default configuration
 │   ├── info.json                 # Device model, version & metadata
+│   ├── changes-summary.md        # Summary of WHAT and WHY changes were made
+│   ├── chat-history.md           # Chat history / conversation transcript
 │   └── archive/                  # Historical backups preserved per run
 │       ├── 2026-10-29_18-05-37/
+│       │   ├── startup-config.txt
+│       │   ├── running-config.txt
+│       │   ├── info.json
+│       │   ├── changes-summary.md
+│       │   └── chat-history.md
 │       └── 2026-10-29_19-22-44/
+```
+
+### 6. Change Audit Logging (WHAT / WHY & Chat History)
+Whenever you apply configuration changes to a router, record WHAT and WHY changes were made alongside chat history:
+
+```bash
+python3 keenetic.py --host cottage log-change \
+  --why "Isolate IoT devices onto dedicated subnet" \
+  --what "Added VLAN 30, configured DHCP pool 192.168.30.0/24" \
+  --chat "session_transcript.txt" \
+  --verification "Tested DHCP binding and isolated routing rule"
 ```
 
 ---
@@ -267,10 +285,14 @@ Once installed, you can talk to your coding assistant (Claude Code, Cursor, Anti
 
 ## Safety Rule for AI Agents
 
-When using this skill with any AI coding agent, the workspace includes a mandatory safety rule in [`AGENTS.md`](./AGENTS.md):
+When using this skill with any AI coding agent, the workspace includes mandatory safety rules in [`AGENTS.md`](./AGENTS.md):
 
-> **Mandatory Pre-Change Backup**:
-> Whenever an agent is instructed to make or test any configuration changes on any Keenetic router (via RCI, CLI, or API), it **must** run `python3 keenetic.py --host <target_router> backup` and verify that the backup succeeded before modifying any setting.
+> **Mandatory Pre-Change Backup & Audit Trail**:
+> Whenever an agent is instructed to make or test any configuration changes on any Keenetic router (via RCI, CLI, or API), it **must**:
+> 1. Run `python3 keenetic.py --host <target_router> backup` and verify that the backup succeeded before modifying any setting.
+> 2. Apply and verify the requested changes.
+> 3. Run a post-change backup to capture the new state.
+> 4. Save **`changes-summary.md`** (documenting WHAT and WHY changes were made) and **`chat-history.md`** (or `transcript.jsonl`) alongside the backup in `backups/<target_router>/`.
 
 ---
 

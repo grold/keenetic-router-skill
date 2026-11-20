@@ -2,10 +2,10 @@
 name: keenetic
 description: >-
   Manage Keenetic routers locally (192.168.1.1) or remotely via KeenDNS / Cloud relay.
-  Use this skill whenever the user asks to inspect or manage their Keenetic router,
-  check router status, firmware, CPU or memory load, list connected devices or Wi-Fi clients,
+  Use this skill whenever the user asks to inspect, configure, or manage their Keenetic router,
+  modify network settings, check router status, firmware, CPU or memory load, list connected devices or Wi-Fi clients,
   inspect network interfaces and IP routes, query RCI REST endpoints, inspect router logs,
-  or reboot the router.
+  backup router configurations with change summaries and chat history, or reboot the router.
 ---
 
 # Keenetic Router Management Skill
@@ -14,17 +14,57 @@ This skill provides comprehensive management and monitoring for Keenetic routers
 
 --------------------------------------------------------------------------------
 
-## Mandatory Rule: Always Backup Before Any Configuration Changes
+## Mandatory Rules: Pre-Change Backup & Change Audit Trail (WHAT / WHY & Chat History)
 
 > [!IMPORTANT]
-> **Pre-Change Backup Requirement**:
-> Each time you are asked to make any configuration changes or apply new settings on a router:
-> 1. **ALWAYS run a fresh backup BEFORE making any changes**:
+> **Strict Pre-Change Backup & Audit Trail Requirement**:
+> Each time you make, apply, or test any configuration changes on any Keenetic router (via RCI, CLI, or API):
+>
+> 1. **PRE-CHANGE BACKUP (MANDATORY)**:
+>    Run a fresh backup BEFORE modifying any configuration:
 >    ```bash
 >    python3 keenetic.py --host <target_router> backup
 >    ```
-> 2. Verify that the backup completes successfully (actual `startup-config.txt` and `running-config.txt` saved, and older version archived).
-> 3. Only after the fresh backup is confirmed may you proceed with modifying the configuration.
+>    Verify that `startup-config.txt` and `running-config.txt` are updated, and previous backup is preserved in `archive/<timestamp>/`.
+>
+> 2. **APPLY & VERIFY CHANGES**:
+>    Apply the requested configuration changes and verify that the router accepted them and they are active.
+>
+> 3. **POST-CHANGE BACKUP**:
+>    Run another backup immediately to capture the newly updated configuration state:
+>    ```bash
+>    python3 keenetic.py --host <target_router> backup
+>    ```
+>
+> 4. **SAVE CHANGE SUMMARY & CHAT HISTORY ALONGSIDE THE BACKUP**:
+>    In the router's backup directory (`backups/<target_router>/`), save:
+>    - **`changes-summary.md`**: Detailed record of **WHY** changes were made (user request, root cause, intent) and **WHAT** changes were made (exact commands, modified RCI endpoints, updated parameters, before/after values, and verification results).
+>    - **`chat-history.md`** (or copy `transcript.jsonl` from `<appDataDir>/brain/<conversation-id>/.system_generated/logs/transcript.jsonl`): Conversation transcript capturing user instructions and reasoning that led to the change.
+>
+>    *(Tip: Use the helper command or write directly)*:
+>    ```bash
+>    python3 keenetic.py --host <target_router> log-change \
+>      --why "<why changes were made>" \
+>      --what "<exact changes and commands applied>" \
+>      --chat "<chat text or path to transcript.jsonl>" \
+>      --verification "<verification results>"
+>    ```
+>    All change summaries and chat histories are archived automatically into `archive/<timestamp>/` during subsequent backups.
+
+### Rationalization Table for Changes & Auditing
+
+| Rationalization | Reality | Counter-Measure |
+|---|---|---|
+| "It was just a minor setting change, no need to log summary" | Any change alters router behavior. If something breaks later, you must know what was changed. | Always save `changes-summary.md` with WHAT and WHY. |
+| "The user already saw what I did in the chat" | Chat contexts expire, get lost, or are inaccessible to future sessions. The backup folder must remain a self-contained audit trail. | Always save chat history alongside the backup. |
+| "I'll do the backup and notes at the end of the day" | Sessions crash, agents disconnect, or routers reboot. | Take pre-change backup before touching settings; save change summary immediately after applying. |
+| "Pre-change backup was taken, post-change backup is unnecessary" | Pre-change backup only contains the *old* configuration. You need the *new* configuration captured too. | Run post-change backup so `startup-config.txt` and `running-config.txt` reflect the new state. |
+
+### Red Flags
+- Sending configuration changes (POST/PUT/DELETE to RCI or CLI config commands) before taking a pre-change backup.
+- Modifying router configuration without writing `changes-summary.md` explaining WHAT and WHY.
+- Omitting chat history/transcript alongside the backup.
+- Failing to verify that changes took effect.
 
 --------------------------------------------------------------------------------
 
@@ -140,18 +180,36 @@ backups/
 │   ├── running-config.txt        # Actual / latest running configuration
 │   ├── default-config.txt        # Factory default configuration
 │   ├── info.json                 # Actual router status, version & backup timestamp
+│   ├── changes-summary.md        # Summary of WHAT and WHY changes were made
+│   ├── chat-history.md           # Chat history / conversation transcript
 │   └── archive/                  # Older backups preserved across runs
 │       ├── 2026-10-29_18-05-37/
 │       │   ├── startup-config.txt
 │       │   ├── running-config.txt
-│       │   └── info.json
+│       │   ├── info.json
+│       │   ├── changes-summary.md
+│       │   └── chat-history.md
 │       └── 2026-10-29_18-23-14/
 │           ├── startup-config.txt
 │           ├── running-config.txt
 │           └── info.json
 ```
 
-### 10. Safely Reboot Router
+### 10. Record Configuration Change Summary & Chat History
+Record why and what changes were made on the router, alongside chat history/transcripts:
+
+```bash
+# Log change summary and chat history using the CLI helper
+python3 keenetic.py --host <target_router> log-change \
+  --why "Split guest and IoT VLANs for security isolation" \
+  --what "Created Interface GuestHome with IP 192.168.2.1/24, enabled DHCP scope 192.168.2.10-192.168.2.50" \
+  --chat "chat-transcript.txt" \
+  --verification "Verified ping to gateway and DHCP lease issuance on GuestHome"
+
+# Or directly write/update backups/<host>/changes-summary.md and backups/<host>/chat-history.md
+```
+
+### 11. Safely Reboot Router
 Triggers a router restart:
 
 ```bash
